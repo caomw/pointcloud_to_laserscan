@@ -39,6 +39,7 @@
 #include "pointcloud_to_laserscan/CloudScanConfig.h"
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+#include <math.h>
 
 namespace pointcloud_to_laserscan
 {
@@ -164,21 +165,28 @@ private:
       ROS_ERROR("%s",ex.what());
     }
 
-    tf::Vector3 origin = 1.0 * cloud_to_ref.getOrigin();
-    origin.setZ( (min_height_+max_height_)*0.5 );
+    // compute translation of virtual laser frame
+    // x,y come from camera frame
+    // z is between min/max height
+    tf::Vector3 ref_origin = cloud_to_ref.getOrigin();
+    ref_origin.setZ( (min_height_+max_height_)*0.5 );
+
+    // compute orientation of virtual laser frame
+    // rotation around z comes from the camera frame
+    tf::Quaternion ref_ori( tf::Vector3(0,0,1), tf::getYaw(cloud_to_ref.getRotation()) );
 
     // transform from reference into 'virtual laser' output frame
     tf::StampedTransform ref_to_out;
     ref_to_out.frame_id_ = ref_frame_id_;
     ref_to_out.child_frame_id_ = output_frame_id_;
     ref_to_out.stamp_ = cloud->header.stamp;
-    ref_to_out.setOrigin( origin );
-    ref_to_out.setRotation( tf::Quaternion(0,0,0,1) );
+    ref_to_out.setOrigin( ref_origin );
+    ref_to_out.setRotation( ref_ori );
     broadcaster.sendTransform( ref_to_out );
 
     // transform from cloud into output frame at zero height
-    origin.setZ( 0.0 );
-    ref_to_out.setOrigin( origin );
+    ref_origin.setZ( 0.0 );
+    ref_to_out.setOrigin( ref_origin );
     tf::Transform cloud_to_out;
     cloud_to_out.mult( ref_to_out.inverse(), cloud_to_ref );
 
