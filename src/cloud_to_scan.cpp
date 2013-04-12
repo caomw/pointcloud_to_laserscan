@@ -172,8 +172,12 @@ private:
     ref_origin.setZ( (min_height_+max_height_)*0.5 );
 
     // compute orientation of virtual laser frame
-    // rotation around z comes from the camera frame
-    tf::Quaternion ref_ori( tf::Vector3(0,0,1), tf::getYaw(cloud_to_ref.getRotation()) );
+    // rotation comes from the z axis of the optical camera frame
+    tf::Vector3 z_axis(0, 0, 1);
+    tf::Transform camera_rot(cloud_to_ref.getRotation());
+    tf::Vector3 rotated_z_axis = camera_rot * z_axis;
+    double alpha = atan2(rotated_z_axis.y(), rotated_z_axis.x());
+    tf::Quaternion ref_ori(tf::Vector3(0,0,1), alpha);
 
     // transform from reference into 'virtual laser' output frame
     tf::StampedTransform ref_to_out;
